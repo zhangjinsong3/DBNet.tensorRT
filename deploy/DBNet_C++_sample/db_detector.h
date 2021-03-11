@@ -82,13 +82,7 @@ namespace BRFD
     cudaStream_t stream;
 
     int get_engine(const std::string onnx_file,
-                   const std::string engine_file,
-                   IExecutionContext* &context,
-                   ICudaEngine* &engine,
-                   void* buffers[],
-                   std::vector<int64_t >& bufferSize,
-                   int inputH,
-                   int inputW);
+                   const std::string engine_file);
 
     int preprocess(const cv::Mat &img,
                    void *tensorRTBuffer,

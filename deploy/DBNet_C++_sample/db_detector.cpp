@@ -25,22 +25,10 @@ DBDetector::DBDetector(std::string model_dir,
 
   // GET ENGINE 1X1
   get_engine(model_dir + model_name_1,
-             model_dir + filenameWithoutExtension(model_name_1) + ".engine",
-             context_1x1,
-             engine_1x1,
-             buffers_1x1,
-             bufferSize_1x1,
-             inputH_1x1,
-             inputW_1x1);
+             model_dir + filenameWithoutExtension(model_name_1) + ".engine");
   // GET ENGINE 2X1
   get_engine(model_dir + model_name_2,
-             model_dir + filenameWithoutExtension(model_name_2) + ".engine",
-             context_2x1,
-             engine_2x1,
-             buffers_2x1,
-             bufferSize_2x1,
-             inputH_2x1,
-             inputW_2x1);
+             model_dir + filenameWithoutExtension(model_name_2) + ".engine");
 }
 
 DBDetector::~DBDetector()
@@ -74,7 +62,9 @@ int DBDetector::get_engine(const std::string onnx_file,
     int verbosity = (int) nvinfer1::ILogger::Severity::kWARNING;
     IBuilder* builder = createInferBuilder(gLogger);
     assert(builder != nullptr);
+    // V1 api
     nvinfer1::INetworkDefinition* network = builder->createNetwork();
+    // V2 api
 //    const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
 //    nvinfer1::INetworkDefinition* network = builder->createNetworkV2(explicitBatch);
 
@@ -454,6 +444,7 @@ int DBDetector::crop(cv::cuda::GpuMat &g_ori_img,
   return 0;
 }
 
+// TODO(zjs): 归一化的矩形点 resize 到非1比1 图片上会变成平行四边形，可以把原图w，h输入函数，计算绝对坐标
 int DBDetector::map2ordered_points(cv::Mat &prob, std::vector<std::vector<cv::Point2f>> &order_points, bool unclip)
 {
   std::vector<std::vector<cv::Point>> contours;
@@ -521,7 +512,7 @@ int DBDetector::map2ordered_points(cv::Mat &prob, std::vector<std::vector<cv::Po
         dif_max = dif;
       }
     }
-    // TODO: filter wrong order!
+    // filter wrong order!
     int ids[4] = {id0, id1, id2, id3};
     int n = unique(ids, ids + 4) - ids;
 //    cout << "dbnet: order points length: " << n << endl;
@@ -530,7 +521,7 @@ int DBDetector::map2ordered_points(cv::Mat &prob, std::vector<std::vector<cv::Po
       // Probably wrong order, use bbox instead!
       cout << id0 << id1 << id2 << id3 << endl;
       cout << "dbnet: points order probably wrong, use bbox instead!" << endl;
-      cv::Rect bbox = cv::boundingRect(cv::Mat(contour));
+      cv::Rect2f bbox = static_cast<cv::Rect2f>(cv::boundingRect(cv::Mat(contour)));
       or_points.emplace_back(cv::Point2f(bbox.x/prob.cols, bbox.y/prob.rows));
       or_points.emplace_back(cv::Point2f((bbox.x + bbox.width)/prob.cols, bbox.y/prob.rows));
       or_points.emplace_back(cv::Point2f((bbox.x + bbox.width)/prob.cols, (bbox.y + bbox.height)/prob.rows));
